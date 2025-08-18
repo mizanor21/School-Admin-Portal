@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, GraduationCap } from "lucide-react"
 
 export function AddTeacherDialog() {
   const [open, setOpen] = useState(false)
@@ -66,10 +66,11 @@ export function AddTeacherDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="font-manrope">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Teacher
-        </Button>
+        <button className="p-6 border border-border rounded-xl hover:bg-muted hover:shadow-lg transition-all duration-300 text-left group bg-gradient-to-br from-secondary/5 to-transparent">
+          <GraduationCap className="h-8 w-8 text-secondary mb-3 group-hover:scale-110 transition-transform duration-300" />
+          <p className="font-manrope font-semibold text-base mb-1">Add Teacher</p>
+          <p className="text-sm text-muted-foreground">Register new staff</p>
+        </button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
