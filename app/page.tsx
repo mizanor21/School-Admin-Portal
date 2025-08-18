@@ -5,9 +5,6 @@ import { Users, GraduationCap, ClipboardList, TrendingUp, Calendar, BookOpen, Aw
 import { AttendanceChart } from "@/components/charts/attendance-chart"
 import { EnrollmentChart } from "@/components/charts/enrollment-chart"
 import { PerformanceChart } from "@/components/charts/performance-chart"
-import { AddStudentDialog } from "@/components/students/add-student-dialog"
-import { AddTeacherDialog } from "@/components/teachers/add-teacher-dialog"
-import { CreateNoticeDialog } from "@/components/notices/create-notice-dialog"
 
 export default function DashboardPage() {
   return (
@@ -182,28 +179,6 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
-
-          <Card className="glass-card relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full -translate-y-16 translate-x-16 blur-2xl"></div>
-            <CardHeader>
-              <CardTitle className="font-geist text-xl text-foreground">Quick Actions</CardTitle>
-              <CardDescription className="font-manrope text-muted-foreground">
-                Smart management tools and shortcuts
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <AddStudentDialog />
-                <AddTeacherDialog />
-                <CreateNoticeDialog />
-                <button className="p-6 glass-card glass-hover rounded-xl text-left group">
-                  <TrendingUp className="h-8 w-8 text-chart-4 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                  <p className="font-manrope font-semibold text-base mb-1 text-foreground">View Reports</p>
-                  <p className="text-sm text-muted-foreground">Analytics dashboard</p>
-                </button>
-              </div>
-            </CardContent>
-          </Card>
         </main>
       </div>
     </div>
