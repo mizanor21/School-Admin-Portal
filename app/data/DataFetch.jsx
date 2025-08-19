@@ -9,3 +9,8 @@ export const useTeachersData = () => {
   const { data, error, mutate } = useSWR(`${API_URL}/api/teachers`, fetcher);
   return { data, error, isLoading: !data && !error, mutate };
 };
+
+export const useNoticesData = () => {
+  const { data, error, mutate } = useSWR(`${API_URL}/api/notices`, fetcher);
+  return { data, error, isLoading: !data && !error, mutate };
+};

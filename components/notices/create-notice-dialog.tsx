@@ -1,302 +1,310 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useCallback, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { Plus, X, Pencil, Calendar } from "lucide-react";
+import axios from "axios";
+import { toast } from "react-hot-toast";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Upload, X, ClipboardList } from "lucide-react"
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "../ui/date-picker";
+import { useNoticesData } from "@/app/data/DataFetch";
 
-export function CreateNoticeDialog() {
-  const [open, setOpen] = useState(false)
-  const [schedulePublish, setSchedulePublish] = useState(false)
-  const [noticeId, setNoticeId] = useState(() => {
-    const year = new Date().getFullYear()
-    const randomNum = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, "0")
-    return `NOC-${year}-${randomNum}`
-  })
-  const [targetAudience, setTargetAudience] = useState<string[]>([])
-  const [attachments, setAttachments] = useState<string[]>([])
+interface NoticeFormValues {
+  title: string;
+  description: string;
+  date: Date;
+  author: string;
+  isPublished: boolean;
+  targetClass: string[];
+}
 
-  const handleAudienceChange = (audience: string, checked: boolean) => {
-    if (checked) {
-      setTargetAudience([...targetAudience, audience])
+interface AddNoticeModalProps {
+  notice?: NoticeFormValues & { _id?: string };
+  mode?: "add" | "edit";
+}
+
+export function AddNoticeModal({ notice, mode = "add" }: AddNoticeModalProps) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { mutate } = useNoticesData();
+
+  // Available classes
+  const availableClasses = [
+    "Students", "Teachers", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10"
+  ];
+
+  const form = useForm<NoticeFormValues>({
+    defaultValues: {
+      title: "",
+      description: "",
+      date: new Date(),
+      author: "",
+      isPublished: true,
+      targetClass: [],
+    },
+  });
+
+  useEffect(() => {
+    if (notice && mode === "edit") {
+      form.reset({
+        title: notice.title,
+        description: notice.description,
+        date: new Date(notice.date),
+        author: notice.author || "",
+        isPublished: notice.isPublished,
+        targetClass: notice.targetClass || [],
+      });
     } else {
-      setTargetAudience(targetAudience.filter((a) => a !== audience))
+      form.reset({
+        title: "",
+        description: "",
+        date: new Date(),
+        author: "",
+        isPublished: true,
+        targetClass: [],
+      });
     }
-  }
+  }, [notice, mode, form]);
 
-  const addAttachment = () => {
-    setAttachments([...attachments, ""])
-  }
-
-  const updateAttachment = (index: number, url: string) => {
-    const updated = attachments.map((att, i) => (i === index ? url : att))
-    setAttachments(updated)
-  }
-
-  const removeAttachment = (index: number) => {
-    setAttachments(attachments.filter((_, i) => i !== index))
-  }
+  const onSubmit = async (data: NoticeFormValues) => {
+    try {
+      setLoading(true);
+      
+      // Format the data for API
+      const formattedData = {
+        ...data,
+        date: data.date.toISOString(),
+      };
+      
+      if (mode === "edit" && notice?._id) {
+        // PATCH request for update
+        await axios.patch(`/api/notices/${notice._id}`, formattedData);
+        toast.success("Notice updated successfully");
+        mutate()
+        form.reset();
+      } else {
+        // POST request for create
+        await axios.post("/api/notices", formattedData);
+        toast.success("Notice added successfully");
+        mutate()
+        form.reset();
+      }
+      
+      mutate();
+      setOpen(false);
+    } catch (error) {
+      console.error("Error saving notice:", error);
+      toast.error("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="p-6 border border-border rounded-xl hover:bg-muted hover:shadow-lg transition-all duration-300 text-left group bg-gradient-to-br from-accent/5 to-transparent">
-          <ClipboardList className="h-8 w-8 text-accent mb-3 group-hover:scale-110 transition-transform duration-300" />
-          <p className="font-manrope font-semibold text-base mb-1">New Notice</p>
-          <p className="text-sm text-muted-foreground">Publish announcement</p>
-        </button>
+        {mode === "edit" ? (
+          <Button variant="ghost" size="sm" className="h-8 px-2">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button className="font-manrope">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Notice
+          </Button>
+        )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-geist">Create New Notice</DialogTitle>
-          <DialogDescription className="font-manrope">
-            Create and publish a comprehensive notice with smart targeting and scheduling options.
-          </DialogDescription>
+          <DialogTitle className="text-2xl font-bold text-gray-800">
+            {mode === "edit" ? "Edit Notice" : "Add New Notice"}
+          </DialogTitle>
         </DialogHeader>
-        <div className="grid gap-6 py-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-geist">Notice Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="noticeId" className="font-manrope">
-                    Notice ID
-                  </Label>
-                  <Input
-                    id="noticeId"
-                    value={noticeId}
-                    onChange={(e) => setNoticeId(e.target.value)}
-                    className="font-manrope"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category" className="font-manrope">
-                    Category
-                  </Label>
-                  <Select>
-                    <SelectTrigger className="font-manrope">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Academic">Academic</SelectItem>
-                      <SelectItem value="Administrative">Administrative</SelectItem>
-                      <SelectItem value="Event">Event</SelectItem>
-                      <SelectItem value="Holiday">Holiday</SelectItem>
-                      <SelectItem value="Emergency">Emergency</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700">Title *</FormLabel>
+                  <FormControl>
+                    <Input
+                      disabled={loading}
+                      placeholder="Enter notice title"
+                      required
+                      className="focus:ring-2 focus:ring-blue-500"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <div className="space-y-2">
-                <Label htmlFor="title" className="font-manrope">
-                  Notice Title
-                </Label>
-                <Input id="title" placeholder="Enter notice title" className="font-manrope" />
-              </div>
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700">Description *</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      disabled={loading}
+                      placeholder="Enter notice description"
+                      required
+                      rows={4}
+                      className="focus:ring-2 focus:ring-blue-500 resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <div className="space-y-2">
-                <Label htmlFor="description" className="font-manrope">
-                  Description
-                </Label>
-                <Textarea
-                  id="description"
-                  placeholder="Write detailed notice description here..."
-                  className="min-h-[120px] font-manrope"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-geist">Targeting & Priority</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="font-manrope">Target Audience</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    "All Students",
-                    "Class 1",
-                    "Class 2",
-                    "Class 3",
-                    "Class 4",
-                    "Class 5",
-                    "Class 6",
-                    "Class 7",
-                    "Class 8",
-                    "Class 9",
-                    "Class 10",
-                    "Teachers",
-                    "Parents",
-                    "Staff",
-                  ].map((audience) => (
-                    <div key={audience} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={audience}
-                        checked={targetAudience.includes(audience)}
-                        onCheckedChange={(checked) => handleAudienceChange(audience, checked as boolean)}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Date *</FormLabel>
+                    <FormControl>
+                      <DatePicker
+                        disabled={loading}
+                        date={field.value}
+                        setDate={field.onChange}
                       />
-                      <Label htmlFor={audience} className="text-sm font-manrope">
-                        {audience}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="priority" className="font-manrope">
-                    Priority
-                  </Label>
-                  <Select>
-                    <SelectTrigger className="font-manrope">
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="High">High</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="Low">Low</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status" className="font-manrope">
-                    Status
-                  </Label>
-                  <Select defaultValue="Active">
-                    <SelectTrigger className="font-manrope">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Draft">Draft</SelectItem>
-                      <SelectItem value="Scheduled">Scheduled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <FormField
+                control={form.control}
+                name="author"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Author</FormLabel>
+                    <FormControl>
+                      <Input
+                        disabled={loading}
+                        placeholder="Author name (optional)"
+                        className="focus:ring-2 focus:ring-blue-500"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-geist">Scheduling</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="dateOfIssue" className="font-manrope">
-                    Date of Issue
-                  </Label>
-                  <Input
-                    id="dateOfIssue"
-                    type="date"
-                    defaultValue={new Date().toISOString().split("T")[0]}
-                    className="font-manrope"
+            <div className="space-y-2">
+              <FormLabel className="text-gray-700">Target Classes *</FormLabel>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-3 border rounded-md">
+                {availableClasses.map((className) => (
+                  <FormField
+                    key={className}
+                    control={form.control}
+                    name="targetClass"
+                    render={({ field }) => {
+                      return (
+                        <FormItem
+                          key={className}
+                          className="flex flex-row items-start space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(className)}
+                              onCheckedChange={(checked) => {
+                                return checked
+                                  ? field.onChange([...field.value, className])
+                                  : field.onChange(
+                                      field.value?.filter(
+                                        (value) => value !== className
+                                      )
+                                    );
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-normal cursor-pointer">
+                            {className}
+                          </FormLabel>
+                        </FormItem>
+                      );
+                    }}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="validUntil" className="font-manrope">
-                    Valid Until
-                  </Label>
-                  <Input id="validUntil" type="date" className="font-manrope" />
-                </div>
+                ))}
               </div>
+              <FormMessage />
+            </div>
 
-              <div className="flex items-center space-x-2">
-                <Switch id="schedule" checked={schedulePublish} onCheckedChange={setSchedulePublish} />
-                <Label htmlFor="schedule" className="font-manrope">
-                  Schedule for later publication
-                </Label>
-              </div>
-
-              {schedulePublish && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="publishDate" className="font-manrope">
-                      Publish Date
-                    </Label>
-                    <Input id="publishDate" type="date" className="font-manrope" />
+            <FormField
+              control={form.control}
+              name="isPublished"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Publish immediately</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      The notice will be visible to selected classes when published.
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="publishTime" className="font-manrope">
-                      Publish Time
-                    </Label>
-                    <Input id="publishTime" type="time" className="font-manrope" />
-                  </div>
-                </div>
+                </FormItem>
               )}
-            </CardContent>
-          </Card>
+            />
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg font-geist">Attachments</CardTitle>
+            <div className="flex justify-end gap-2 pt-4">
               <Button
-                type="button"
                 variant="outline"
-                size="sm"
-                onClick={addAttachment}
-                className="font-manrope bg-transparent"
+                type="button"
+                disabled={loading}
+                onClick={() => setOpen(false)}
+                className="hover:bg-gray-100"
               >
-                <Upload className="h-4 w-4 mr-1" />
-                Add Attachment
+                Cancel
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {attachments.map((attachment, index) => (
-                <div key={index} className="flex gap-2 items-center">
-                  <Input
-                    placeholder="Enter attachment URL or file path"
-                    value={attachment}
-                    onChange={(e) => updateAttachment(index, e.target.value)}
-                    className="font-manrope flex-1"
-                  />
-                  <Button type="button" variant="outline" size="sm" onClick={() => removeAttachment(index)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              {attachments.length === 0 && (
-                <p className="text-sm text-muted-foreground font-manrope">No attachments added yet.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)} className="font-manrope">
-            Save as Draft
-          </Button>
-          <Button variant="outline" onClick={() => setOpen(false)} className="font-manrope">
-            Cancel
-          </Button>
-          <Button onClick={() => setOpen(false)} className="font-manrope">
-            Publish Notice
-          </Button>
-        </DialogFooter>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              >
+                {loading 
+                  ? (mode === "edit" ? "Updating..." : "Adding...") 
+                  : (mode === "edit" ? "Update Notice" : "Add Notice")}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -5,6 +5,7 @@ import { NoticeFilters } from "@/components/notices/notice-filters"
 import { NoticeStats } from "@/components/notices/notice-stats"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
+import { AddNoticeModal } from "@/components/notices/create-notice-dialog"
 
 export default function NoticesPage() {
   return (
@@ -20,15 +21,11 @@ export default function NoticesPage() {
               <h1 className="font-geist text-3xl font-bold text-foreground mb-2">Notice Board</h1>
               <p className="font-manrope text-muted-foreground">Create and manage school announcements and notices</p>
             </div>
-            <Button className="font-manrope">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Notice
-            </Button>
+            <AddNoticeModal />
           </div>
 
           <div className="space-y-6">
             <NoticeStats />
-            <NoticeFilters />
             <NoticesGrid />
           </div>
         </main>
