@@ -1,321 +1,407 @@
-"use client"
+// components/teachers/add-teacher-modal.tsx
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { Plus, Upload, X } from "lucide-react";
+import axios from "axios";
+import { toast } from "react-hot-toast";
+import { useDropzone } from "react-dropzone";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Trash2, GraduationCap } from "lucide-react"
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DatePicker } from "../ui/date-picker";
+import { Progress } from "../ui/progress";
+import { useTeachersData } from "@/app/data/DataFetch";
 
-export function AddTeacherDialog() {
-  const [open, setOpen] = useState(false)
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([])
-  const [selectedClasses, setSelectedClasses] = useState<string[]>([])
-  const [experienceHistory, setExperienceHistory] = useState([{ school: "", years: "" }])
-  const [teacherId, setTeacherId] = useState(() => {
-    const year = new Date().getFullYear()
-    const randomNum = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, "0")
-    return `TCH-${year}-${randomNum}`
-  })
+interface TeacherFormValues {
+  teacherId: string;
+  name: string;
+  gender: "Male" | "Female" | "Other";
+  dateOfBirth: Date;
+  photo?: string;
+  phone: string;
+  email: string;
+  subject: string;
+  address: string;
+}
 
-  const handleSubjectChange = (subject: string, checked: boolean) => {
-    if (checked) {
-      setSelectedSubjects([...selectedSubjects, subject])
-    } else {
-      setSelectedSubjects(selectedSubjects.filter((s) => s !== subject))
+export function AddTeacherModal() {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [preview, setPreview] = useState<string | null>(null);
+  const {mutate} = useTeachersData();
+
+  const form = useForm<TeacherFormValues>({
+    defaultValues: {
+      teacherId: "",
+      name: "",
+      gender: "Male",
+      dateOfBirth: new Date(),
+      photo: "",
+      phone: "",
+      email: "",
+      subject: "",
+      address: "",
+    },
+  });
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    setPreview(URL.createObjectURL(file));
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "habson");
+
+      const response = await axios.post(
+        "https://api.cloudinary.com/v1_1/dov6k7xdk/image/upload",
+        formData,
+        {
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / (progressEvent.total || 100)
+            );
+            setUploadProgress(percentCompleted);
+          },
+        }
+      );
+
+      form.setValue("photo", response.data.secure_url);
+      toast.success("Image uploaded successfully");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error("Failed to upload image");
+      setPreview(null);
+    } finally {
+      setUploading(false);
     }
-  }
+  }, [form]);
 
-  const handleClassChange = (className: string, checked: boolean) => {
-    if (checked) {
-      setSelectedClasses([...selectedClasses, className])
-    } else {
-      setSelectedClasses(selectedClasses.filter((c) => c !== className))
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.webp']
+    },
+    maxFiles: 1,
+    maxSize: 5 * 1024 * 1024, // 5MB
+  });
+
+  const removeImage = () => {
+    setPreview(null);
+    form.setValue("photo", "");
+  };
+
+  const onSubmit = async (data: TeacherFormValues) => {
+    try {
+      setLoading(true);
+      await axios.post("/api/teachers", data);
+      toast.success("Teacher added successfully");
+      mutate();
+      form.reset();
+      setPreview(null);
+      setOpen(false);
+    } catch (error) {
+      toast.error("Something went wrong");
+    } finally {
+      setLoading(false);
     }
-  }
-
-  const addExperienceEntry = () => {
-    setExperienceHistory([...experienceHistory, { school: "", years: "" }])
-  }
-
-  const removeExperienceEntry = (index: number) => {
-    if (experienceHistory.length > 1) {
-      setExperienceHistory(experienceHistory.filter((_, i) => i !== index))
-    }
-  }
-
-  const updateExperienceEntry = (index: number, field: string, value: string) => {
-    const updated = experienceHistory.map((entry, i) => (i === index ? { ...entry, [field]: value } : entry))
-    setExperienceHistory(updated)
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="p-6 border border-border rounded-xl hover:bg-muted hover:shadow-lg transition-all duration-300 text-left group bg-gradient-to-br from-secondary/5 to-transparent">
-          <GraduationCap className="h-8 w-8 text-secondary mb-3 group-hover:scale-110 transition-transform duration-300" />
-          <p className="font-manrope font-semibold text-base mb-1">Add Teacher</p>
-          <p className="text-sm text-muted-foreground">Register new staff</p>
-        </button>
+        <Button className="font-manrope">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Teacher
+        </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle className="font-geist">Add New Teacher</DialogTitle>
-          <DialogDescription className="font-manrope">
-            Enter comprehensive teacher information including qualifications, experience, and salary details.
-          </DialogDescription>
+          <DialogTitle className="text-2xl font-bold text-gray-800">
+            Add New Teacher
+          </DialogTitle>
         </DialogHeader>
-        <div className="grid gap-6 py-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-geist">Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="font-manrope">
-                    Full Name
-                  </Label>
-                  <Input id="name" placeholder="Enter full name" className="font-manrope" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="gender" className="font-manrope">
-                    Gender
-                  </Label>
-                  <Select>
-                    <SelectTrigger className="font-manrope">
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth" className="font-manrope">
-                    Date of Birth
-                  </Label>
-                  <Input id="dateOfBirth" type="date" className="font-manrope" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="teacherId" className="font-manrope">
-                    Teacher ID
-                  </Label>
-                  <Input
-                    id="teacherId"
-                    value={teacherId}
-                    onChange={(e) => setTeacherId(e.target.value)}
-                    className="font-manrope"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="font-manrope">
-                    Email
-                  </Label>
-                  <Input id="email" type="email" placeholder="teacher@school.edu" className="font-manrope" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="font-manrope">
-                    Phone
-                  </Label>
-                  <Input id="phone" placeholder="+8801XXXXXXXXX" className="font-manrope" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address" className="font-manrope">
-                  Address
-                </Label>
-                <Textarea id="address" placeholder="Enter full address" className="font-manrope" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-geist">Academic Assignment</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="font-manrope">Subjects Taught</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {["Math", "Science", "English", "History", "Geography", "Physics", "Chemistry", "Biology"].map(
-                    (subject) => (
-                      <div key={subject} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={subject}
-                          checked={selectedSubjects.includes(subject)}
-                          onCheckedChange={(checked) => handleSubjectChange(subject, checked as boolean)}
-                        />
-                        <Label htmlFor={subject} className="text-sm font-manrope">
-                          {subject}
-                        </Label>
-                      </div>
-                    ),
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-manrope">Classes Assigned</Label>
-                <div className="grid grid-cols-5 gap-2">
-                  {[
-                    "Class 1",
-                    "Class 2",
-                    "Class 3",
-                    "Class 4",
-                    "Class 5",
-                    "Class 6",
-                    "Class 7",
-                    "Class 8",
-                    "Class 9",
-                    "Class 10",
-                  ].map((className) => (
-                    <div key={className} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={className}
-                        checked={selectedClasses.includes(className)}
-                        onCheckedChange={(checked) => handleClassChange(className, checked as boolean)}
-                      />
-                      <Label htmlFor={className} className="text-sm font-manrope">
-                        {className}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-geist">Qualification & Experience</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="qualification" className="font-manrope">
-                    Highest Qualification
-                  </Label>
-                  <Input id="qualification" placeholder="B.Sc in Mathematics" className="font-manrope" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="joiningDate" className="font-manrope">
-                    Joining Date
-                  </Label>
-                  <Input id="joiningDate" type="date" className="font-manrope" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="font-manrope">Experience History</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addExperienceEntry}
-                    className="font-manrope bg-transparent"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Experience
-                  </Button>
-                </div>
-                {experienceHistory.map((entry, index) => (
-                  <div key={index} className="grid grid-cols-3 gap-4 items-end">
-                    <div className="space-y-2">
-                      <Label className="font-manrope">School/Institution</Label>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="teacherId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Teacher ID</FormLabel>
+                    <FormControl>
                       <Input
-                        placeholder="ABC School"
-                        value={entry.school}
-                        onChange={(e) => updateExperienceEntry(index, "school", e.target.value)}
-                        className="font-manrope"
+                        disabled={loading}
+                        placeholder="T-001"
+                        required
+                        className="focus:ring-2 focus:ring-blue-500"
+                        {...field}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-manrope">Years</Label>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Full Name</FormLabel>
+                    <FormControl>
                       <Input
-                        type="number"
-                        placeholder="3"
-                        value={entry.years}
-                        onChange={(e) => updateExperienceEntry(index, "years", e.target.value)}
-                        className="font-manrope"
+                        disabled={loading}
+                        placeholder="John Doe"
+                        required
+                        className="focus:ring-2 focus:ring-blue-500"
+                        {...field}
                       />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeExperienceEntry(index)}
-                      disabled={experienceHistory.length === 1}
-                      className="h-10"
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Gender</FormLabel>
+                    <Select
+                      disabled={loading}
+                      onValueChange={field.onChange}
+                      value={field.value}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                      <FormControl>
+                        <SelectTrigger className="focus:ring-2 focus:ring-blue-500">
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="dateOfBirth"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Date of Birth</FormLabel>
+                    <FormControl>
+                      <DatePicker
+                        disabled={loading}
+                        date={field.value}
+                        setDate={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        disabled={loading}
+                        placeholder="john@example.com"
+                        type="email"
+                        required
+                        className="focus:ring-2 focus:ring-blue-500"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Phone</FormLabel>
+                    <FormControl>
+                      <Input
+                        disabled={loading}
+                        placeholder="+1234567890"
+                        type="tel"
+                        required
+                        className="focus:ring-2 focus:ring-blue-500"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-geist">Salary Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="basicSalary" className="font-manrope">
-                    Basic Salary
-                  </Label>
-                  <Input id="basicSalary" type="number" placeholder="25000" className="font-manrope" />
+            {/* Image Upload Section */}
+            <div className="space-y-2">
+              <FormLabel className="text-gray-700">Profile Photo</FormLabel>
+              {preview ? (
+                <div className="relative group">
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="h-32 w-32 rounded-lg object-cover border-2 border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="allowance" className="font-manrope">
-                    Allowance
-                  </Label>
-                  <Input id="allowance" type="number" placeholder="5000" className="font-manrope" />
+              ) : (
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                    isDragActive
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-300 hover:border-blue-400"
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <Upload className="h-8 w-8 text-gray-500" />
+                    <p className="text-sm text-gray-600">
+                      {isDragActive
+                        ? "Drop the image here"
+                        : "Drag & drop an image here, or click to select"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      JPEG, PNG, WEBP (Max 5MB)
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bankAccount" className="font-manrope">
-                    Bank Account
-                  </Label>
-                  <Input id="bankAccount" placeholder="0123456789" className="font-manrope" />
+              )}
+              {uploading && (
+                <div className="space-y-1">
+                  <Progress value={uploadProgress} className="h-2" />
+                  <p className="text-xs text-gray-500 text-right">
+                    Uploading... {uploadProgress}%
+                  </p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} className="font-manrope">
-            Cancel
-          </Button>
-          <Button onClick={() => setOpen(false)} className="font-manrope">
-            Add Teacher
-          </Button>
-        </DialogFooter>
+              )}
+              <FormField
+                control={form.control}
+                name="photo"
+                render={({ field }) => (
+                  <FormItem className="hidden">
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="subject"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700">Subject</FormLabel>
+                  <FormControl>
+                    <Input
+                      disabled={loading}
+                      placeholder="Mathematics"
+                      required
+                      className="focus:ring-2 focus:ring-blue-500"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700">Address</FormLabel>
+                  <FormControl>
+                    <Input
+                      disabled={loading}
+                      placeholder="123 Main St, City"
+                      required
+                      className="focus:ring-2 focus:ring-blue-500"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  setOpen(false);
+                  setPreview(null);
+                }}
+                className="hover:bg-gray-100"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading || uploading}
+                className="bg-blue-600 hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              >
+                {loading ? "Adding..." : "Add Teacher"}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
