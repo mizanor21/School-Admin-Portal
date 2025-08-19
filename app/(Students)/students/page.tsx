@@ -19,10 +19,10 @@ export default function StudentsPage() {
               <h1 className="font-geist text-3xl font-bold text-foreground mb-2">Students</h1>
               <p className="font-manrope text-muted-foreground">Manage student records and information</p>
             </div>
-            <Button className="font-manrope">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Student
-            </Button>
+              <Button className="font-manrope">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Student
+              </Button>
           </div>
 
           <div className="space-y-6">
