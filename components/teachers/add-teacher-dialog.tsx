@@ -1,9 +1,9 @@
 // components/teachers/add-teacher-modal.tsx
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Plus, Upload, X } from "lucide-react";
+import { Plus, Upload, X, Pencil } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useDropzone } from "react-dropzone";
@@ -48,13 +48,18 @@ interface TeacherFormValues {
   address: string;
 }
 
-export function AddTeacherModal() {
+interface AddTeacherModalProps {
+  teacher?: TeacherFormValues & { id?: string };
+  mode?: "add" | "edit";
+}
+
+export function AddTeacherModal({ teacher, mode = "add" }: AddTeacherModalProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
-  const {mutate} = useTeachersData();
+  const { mutate } = useTeachersData();
 
   const form = useForm<TeacherFormValues>({
     defaultValues: {
@@ -69,6 +74,38 @@ export function AddTeacherModal() {
       address: "",
     },
   });
+
+  useEffect(() => {
+    if (teacher && mode === "edit") {
+      form.reset({
+        teacherId: teacher.teacherId,
+        name: teacher.name,
+        gender: teacher.gender,
+        dateOfBirth: new Date(teacher.dateOfBirth),
+        photo: teacher.photo,
+        phone: teacher.phone,
+        email: teacher.email,
+        subject: teacher.subject,
+        address: teacher.address,
+      });
+      if (teacher.photo) {
+        setPreview(teacher.photo);
+      }
+    } else {
+      form.reset({
+        teacherId: "",
+        name: "",
+        gender: "Male",
+        dateOfBirth: new Date(),
+        photo: "",
+        phone: "",
+        email: "",
+        subject: "",
+        address: "",
+      });
+      setPreview(null);
+    }
+  }, [teacher, mode, form]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -124,8 +161,17 @@ export function AddTeacherModal() {
   const onSubmit = async (data: TeacherFormValues) => {
     try {
       setLoading(true);
-      await axios.post("/api/teachers", data);
-      toast.success("Teacher added successfully");
+      
+      if (mode === "edit" && teacher?._id) {
+        // PATCH request for update
+        await axios.patch(`/api/teachers/${teacher._id}`, data);
+        toast.success("Teacher updated successfully");
+      } else {
+        // POST request for create
+        await axios.post("/api/teachers", data);
+        toast.success("Teacher added successfully");
+      }
+      
       mutate();
       form.reset();
       setPreview(null);
@@ -140,15 +186,21 @@ export function AddTeacherModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="font-manrope">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Teacher
-        </Button>
+        {mode === "edit" ? (
+          <Button variant="ghost" size="sm" className="h-8 px-2">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button className="font-manrope">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Teacher
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-gray-800">
-            Add New Teacher
+            {mode === "edit" ? "Edit Teacher" : "Add New Teacher"}
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
@@ -162,7 +214,7 @@ export function AddTeacherModal() {
                     <FormLabel className="text-gray-700">Teacher ID</FormLabel>
                     <FormControl>
                       <Input
-                        disabled={loading}
+                        disabled={loading || mode === "edit"}
                         placeholder="T-001"
                         required
                         className="focus:ring-2 focus:ring-blue-500"
@@ -396,7 +448,9 @@ export function AddTeacherModal() {
                 disabled={loading || uploading}
                 className="bg-blue-600 hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               >
-                {loading ? "Adding..." : "Add Teacher"}
+                {loading 
+                  ? (mode === "edit" ? "Updating..." : "Adding...") 
+                  : (mode === "edit" ? "Update Teacher" : "Add Teacher")}
               </Button>
             </div>
           </form>

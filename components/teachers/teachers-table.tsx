@@ -18,19 +18,19 @@ import { MoreHorizontal, Eye, Edit, Trash2, Mail, Phone, Star, Search, Filter, P
 import { Input } from "@/components/ui/input"
 import { useTeachersData } from '../../app/data/DataFetch'
 import { toast } from "sonner"
+import axios from "axios"
+import { AddTeacherModal } from "./add-teacher-dialog"
 
 interface Teacher {
   id: string
+  _id: string
   name: string
   email: string
   phone: string
   department: string
-  subjects: string[]
-  experience: number
+  subject: string
   status: "Active" | "On Leave" | "Inactive"
-  rating: number
-  classes: number
-  avatar?: string
+  photo?: string
 }
 
 export function TeachersTable() {
@@ -38,9 +38,8 @@ export function TeachersTable() {
   const { data: teachers = [], error, isLoading, mutate } = useTeachersData()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState<string>("All")
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [currentTeacher, setCurrentTeacher] = useState<Teacher | null>(null)
 
   // Filter teachers based on search and department
   const filteredTeachers = teachers.filter(teacher => {
@@ -67,34 +66,24 @@ export function TeachersTable() {
     )
   }
 
-  const getRatingStars = (rating: number) => {
-    return (
-      <div className="flex items-center gap-1">
-        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-        <span className="font-medium text-sm">{rating?.toFixed(1)}</span>
-      </div>
-    )
+  const handleOpenModal = (teacher: Teacher | null) => {
+    setCurrentTeacher(teacher)
+    setIsModalOpen(true)
   }
 
-  const handleDelete = async (teacherId: string) => {
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setCurrentTeacher(null)
+  }
+
+  const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/teachers/${teacherId}`, {
-        method: 'DELETE'
-      })
-
-      if (!response.ok) throw new Error('Failed to delete teacher')
-
+      await axios.delete(`/api/teachers?id=${id}`)
+      mutate()
       toast.success("Teacher deleted successfully")
-      mutate() // Refresh the data
     } catch (error) {
-      toast.error("Failed to delete teacher")
-      console.error("Delete error:", error)
+      toast.error("Something went wrong")
     }
-  }
-
-  const handleEdit = (teacher: Teacher) => {
-    setSelectedTeacher(teacher)
-    setEditDialogOpen(true)
   }
 
   if (error) return <div className="text-red-500 p-4">Error loading teachers data</div>
@@ -154,7 +143,7 @@ export function TeachersTable() {
                   <TableHead className="w-[220px]">Teacher</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Department</TableHead>
-                  <TableHead>Subjects</TableHead>
+                  <TableHead>Subject</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -172,7 +161,7 @@ export function TeachersTable() {
                           </div>
                         </div>
                       </TableCell>
-                      {Array.from({ length: 7 }).map((_, j) => (
+                      {Array.from({ length: 5 }).map((_, j) => (
                         <TableCell key={j}>
                           <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
                         </TableCell>
@@ -217,7 +206,7 @@ export function TeachersTable() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span>{teacher?.subject}</span>
+                        <span>{teacher.subject}</span>
                       </TableCell>
                       <TableCell>{getStatusBadge(teacher.status)}</TableCell>
                       <TableCell className="text-right">
@@ -229,17 +218,13 @@ export function TeachersTable() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => router.push(`/teachers/${teacher.id}`)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(teacher)}>
+                            <DropdownMenuItem onClick={() => handleOpenModal(teacher)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => handleDelete(teacher.id)}
+                              onClick={() => handleDelete(teacher._id)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
@@ -251,7 +236,7 @@ export function TeachersTable() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                       No teachers found
                     </TableCell>
                   </TableRow>
@@ -275,6 +260,15 @@ export function TeachersTable() {
           </div>
         </CardContent>
       </Card>
+
+      {
+        currentTeacher && <AddTeacherModal
+          open={isModalOpen}
+          onOpenChange={handleCloseModal}
+          teacher={currentTeacher}
+          mode={currentTeacher ? "edit" : "add"}
+        />
+      }
     </>
   )
 }
