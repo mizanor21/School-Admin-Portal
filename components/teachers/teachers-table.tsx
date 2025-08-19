@@ -170,7 +170,7 @@ export function TeachersTable() {
                   ))
                 ) : filteredTeachers.length > 0 ? (
                   filteredTeachers.map((teacher) => (
-                    <TableRow key={teacher.id} className="hover:bg-gray-50">
+                    <TableRow key={teacher?._id} className="hover:bg-gray-50">
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10">
