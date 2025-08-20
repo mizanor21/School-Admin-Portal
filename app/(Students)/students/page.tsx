@@ -2,8 +2,7 @@ import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { StudentsTable } from "@/components/students/students-table"
 import { StudentFilters } from "@/components/students/student-filters"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { AddStudentModal } from "@/components/students/add-student-dialog"
 
 export default function StudentsPage() {
   return (
@@ -19,10 +18,7 @@ export default function StudentsPage() {
               <h1 className="font-geist text-3xl font-bold text-foreground mb-2">Students</h1>
               <p className="font-manrope text-muted-foreground">Manage student records and information</p>
             </div>
-              <Button className="font-manrope">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Student
-              </Button>
+            <AddStudentModal />
           </div>
 
           <div className="space-y-6">

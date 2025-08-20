@@ -14,3 +14,8 @@ export const useNoticesData = () => {
   const { data, error, mutate } = useSWR(`${API_URL}/api/notices`, fetcher);
   return { data, error, isLoading: !data && !error, mutate };
 };
+
+export const useStudentsData = () => {
+  const { data, error, mutate } = useSWR(`${API_URL}/api/students`, fetcher);
+  return { data, error, isLoading: !data && !error, mutate };
+};
