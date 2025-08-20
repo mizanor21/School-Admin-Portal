@@ -1,7 +1,6 @@
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { NoticesGrid } from "@/components/notices/notices-grid"
-import { NoticeFilters } from "@/components/notices/notice-filters"
 import { NoticeStats } from "@/components/notices/notice-stats"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"

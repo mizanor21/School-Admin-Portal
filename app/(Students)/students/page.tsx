@@ -1,7 +1,6 @@
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { StudentsTable } from "@/components/students/students-table"
-import { StudentFilters } from "@/components/students/student-filters"
 import { AddStudentModal } from "@/components/students/add-student-dialog"
 
 export default function StudentsPage() {
@@ -22,7 +21,6 @@ export default function StudentsPage() {
           </div>
 
           <div className="space-y-6">
-            <StudentFilters />
             <StudentsTable />
           </div>
         </main>

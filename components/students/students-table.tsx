@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +15,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Edit, Trash2, Mail, Phone, User, BookOpen } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { MoreHorizontal, Eye, Edit, Trash2, Mail, Phone, User, BookOpen, Search, Filter, X, Calendar } from "lucide-react"
 import { useStudentsData } from "@/app/data/DataFetch"
 import { AddStudentModal } from "./add-student-dialog"
 
@@ -43,10 +51,108 @@ interface Student {
   __v?: number;
 }
 
+interface Filters {
+  search: string;
+  class: string;
+  session: string;
+  status: string;
+  result: string;
+  gender: string;
+}
+
 export function StudentsTable() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<Filters>({
+    search: "",
+    class: "all",
+    session: "all",
+    status: "all",
+    result: "all",
+    gender: "all"
+  })
   const { data: students = [], isLoading, mutate } = useStudentsData()
+
+  // Get unique values for filter options
+  const filterOptions = useMemo(() => {
+    const classes = new Set<string>();
+    const sessions = new Set<string>();
+    const results = new Set<string>();
+    const genders = new Set<string>();
+
+    students.forEach(student => {
+      genders.add(student.gender);
+      if (student.academicHistory && student.academicHistory.length > 0) {
+        student.academicHistory.forEach(record => {
+          classes.add(record.class);
+          sessions.add(record.session);
+          results.add(record.result);
+        });
+      }
+    });
+
+    return {
+      classes: Array.from(classes).sort(),
+      sessions: Array.from(sessions).sort((a, b) => b.localeCompare(a)), // Sort sessions descending (newest first)
+      results: Array.from(results).sort(),
+      genders: Array.from(genders).sort()
+    };
+  }, [students]);
+
+  // Filter students based on current filters
+  const filteredStudents = useMemo(() => {
+    return students.filter(student => {
+      // Search filter (name, studentId, phone, guardian name)
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase();
+        const matchesSearch = 
+          student.name.toLowerCase().includes(searchTerm) ||
+          student.studentId.toLowerCase().includes(searchTerm) ||
+          student.phone.toLowerCase().includes(searchTerm) ||
+          (student.guardian?.name && student.guardian.name.toLowerCase().includes(searchTerm));
+        if (!matchesSearch) return false;
+      }
+
+      // Class filter
+      if (filters.class !== "all") {
+        const hasMatchingClass = student.academicHistory?.some(
+          record => record.class === filters.class
+        );
+        if (!hasMatchingClass) return false;
+      }
+
+      // Session filter
+      if (filters.session !== "all") {
+        const hasMatchingSession = student.academicHistory?.some(
+          record => record.session === filters.session
+        );
+        if (!hasMatchingSession) return false;
+      }
+
+      // Status filter
+      if (filters.status !== "all") {
+        const hasAcademicRecords = student.academicHistory && student.academicHistory.length > 0;
+        if (filters.status === "active" && !hasAcademicRecords) return false;
+        if (filters.status === "new" && hasAcademicRecords) return false;
+      }
+
+      // Result filter
+      if (filters.result !== "all") {
+        const hasMatchingResult = student.academicHistory?.some(
+          record => record.result === filters.result
+        );
+        if (!hasMatchingResult) return false;
+      }
+
+      // Gender filter
+      if (filters.gender !== "all" && student.gender !== filters.gender) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [students, filters]);
 
   const getInitials = (name: string) => {
     return name
@@ -59,9 +165,16 @@ export function StudentsTable() {
 
   const getCurrentClass = (student: Student) => {
     if (student.academicHistory && student.academicHistory.length > 0) {
-      // Get the most recent academic record (assuming they're ordered by date)
       const latestRecord = student.academicHistory[student.academicHistory.length - 1];
       return latestRecord.class;
+    }
+    return "N/A";
+  };
+
+  const getCurrentSession = (student: Student) => {
+    if (student.academicHistory && student.academicHistory.length > 0) {
+      const latestRecord = student.academicHistory[student.academicHistory.length - 1];
+      return latestRecord.session;
     }
     return "N/A";
   };
@@ -75,7 +188,6 @@ export function StudentsTable() {
   };
 
   const getStatusBadge = (student: Student) => {
-    // Simple status logic based on academic history
     const hasAcademicRecords = student.academicHistory && student.academicHistory.length > 0;
     return (
       <Badge variant={hasAcademicRecords ? "default" : "secondary"} className="font-manrope">
@@ -115,6 +227,24 @@ export function StudentsTable() {
     setEditingStudent(student);
   };
 
+  const clearFilters = () => {
+    setFilters({
+      search: "",
+      class: "all",
+      session: "all",
+      status: "all",
+      result: "all",
+      gender: "all"
+    });
+  };
+
+  const hasActiveFilters = filters.search || 
+    filters.class !== "all" || 
+    filters.session !== "all" ||
+    filters.status !== "all" || 
+    filters.result !== "all" || 
+    filters.gender !== "all";
+
   if (isLoading) {
     return (
       <Card>
@@ -128,6 +258,7 @@ export function StudentsTable() {
                 <TableRow>
                   <TableHead className="font-manrope font-medium">Student</TableHead>
                   <TableHead className="font-manrope font-medium">Contact</TableHead>
+                  <TableHead className="font-manrope font-medium">Session</TableHead>
                   <TableHead className="font-manrope font-medium">Class</TableHead>
                   <TableHead className="font-manrope font-medium">Status</TableHead>
                   <TableHead className="font-manrope font-medium">Age</TableHead>
@@ -157,6 +288,9 @@ export function StudentsTable() {
                       <div className="h-4 bg-gray-200 rounded w-12"></div>
                     </TableCell>
                     <TableCell>
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    </TableCell>
+                    <TableCell>
                       <div className="h-6 bg-gray-200 rounded w-16"></div>
                     </TableCell>
                     <TableCell>
@@ -181,9 +315,142 @@ export function StudentsTable() {
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="font-geist">Student Records</CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-1">
+                  Active
+                </Badge>
+              )}
+            </Button>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="text-muted-foreground"
+              >
+                <X className="h-4 w-4" />
+                Clear
+              </Button>
+            )}
+          </div>
         </CardHeader>
+        
+        {/* Filter Section */}
+        {showFilters && (
+          <CardContent className="border-b pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search students..."
+                  value={filters.search}
+                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                  className="pl-9"
+                />
+              </div>
+
+              {/* Session Filter */}
+              <Select
+                value={filters.session}
+                onValueChange={(value) => setFilters({ ...filters, session: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by session" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sessions</SelectItem>
+                  {filterOptions.sessions.map((session) => (
+                    <SelectItem key={session} value={session}>
+                      {session}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Class Filter */}
+              <Select
+                value={filters.class}
+                onValueChange={(value) => setFilters({ ...filters, class: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {filterOptions.classes.map((cls) => (
+                    <SelectItem key={cls} value={cls}>
+                      {cls}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Status Filter */}
+              <Select
+                value={filters.status}
+                onValueChange={(value) => setFilters({ ...filters, status: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="new">New</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Result Filter */}
+              <Select
+                value={filters.result}
+                onValueChange={(value) => setFilters({ ...filters, result: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by result" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Results</SelectItem>
+                  {filterOptions.results.map((result) => (
+                    <SelectItem key={result} value={result}>
+                      {result}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Gender Filter */}
+              <Select
+                value={filters.gender}
+                onValueChange={(value) => setFilters({ ...filters, gender: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Genders</SelectItem>
+                  {filterOptions.genders.map((gender) => (
+                    <SelectItem key={gender} value={gender}>
+                      {gender}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        )}
+
         <CardContent>
           <div className="rounded-md border">
             <Table>
@@ -192,6 +459,7 @@ export function StudentsTable() {
                   <TableHead className="font-manrope font-medium">Student</TableHead>
                   <TableHead className="font-manrope font-medium">Contact</TableHead>
                   <TableHead className="font-manrope font-medium">Class</TableHead>
+                  <TableHead className="font-manrope font-medium">Session</TableHead>
                   <TableHead className="font-manrope font-medium">Status</TableHead>
                   <TableHead className="font-manrope font-medium">Age</TableHead>
                   <TableHead className="font-manrope font-medium">Latest Result</TableHead>
@@ -199,7 +467,7 @@ export function StudentsTable() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {students.map((student: Student) => (
+                {filteredStudents.map((student: Student) => (
                   <TableRow key={student._id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -241,6 +509,14 @@ export function StudentsTable() {
                             Roll: {student.academicHistory[student.academicHistory.length - 1].roll}
                           </p>
                         )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-manrope">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-medium">{getCurrentSession(student)}</span>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(student)}</TableCell>
@@ -292,9 +568,20 @@ export function StudentsTable() {
             </Table>
           </div>
 
+          {filteredStudents.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="font-manrope">No students found matching your filters.</p>
+              {hasActiveFilters && (
+                <Button variant="link" onClick={clearFilters} className="mt-2">
+                  Clear all filters
+                </Button>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-between mt-4">
             <p className="text-sm text-muted-foreground font-manrope">
-              Showing {students.length} of {students.length} students
+              Showing {filteredStudents.length} of {students.length} students
             </p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" disabled className="font-manrope bg-transparent">
