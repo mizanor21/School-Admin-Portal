@@ -179,7 +179,7 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
   const onSubmit = async (data: StudentFormValues) => {
     try {
       setLoading(true);
-      
+
       // Format date for MongoDB
       const formattedData = {
         ...data,
@@ -189,7 +189,7 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
           roll: Number(history.roll) // Ensure roll is a number
         }))
       };
-      
+
       if (mode === "edit" && student?._id) {
         // PATCH request for update
         await axios.patch(`/api/students/${student._id}`, formattedData);
@@ -199,7 +199,7 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
         await axios.post("/api/students", formattedData);
         toast.success("Student added successfully");
       }
-      
+
       mutate();
       form.reset();
       setPreview(null);
@@ -369,11 +369,10 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
               ) : (
                 <div
                   {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                    isDragActive
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-300 hover:border-blue-400"
-                  }`}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragActive
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-300 hover:border-blue-400"
+                    }`}
                 >
                   <input {...getInputProps()} />
                   <div className="flex flex-col items-center justify-center space-y-2">
@@ -493,15 +492,30 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
                       name={`academicHistory.${index}.session`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700">Session</FormLabel>
-                          <FormControl>
-                            <Input
-                              disabled={loading}
-                              placeholder="2023-2024"
-                              className="focus:ring-2 focus:ring-blue-500"
-                              {...field}
-                            />
-                          </FormControl>
+                          <FormLabel className="text-gray-700">Session *</FormLabel>
+                          <Select
+                            disabled={loading}
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="focus:ring-2 focus:ring-blue-500">
+                                <SelectValue placeholder="Select session" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Array.from({ length: 26 }, (_, i) => {
+                                const startYear = 2024 + i;
+                                const endYear = startYear + 1;
+                                const session = `${startYear}-${endYear}`;
+                                return (
+                                  <SelectItem key={session} value={session}>
+                                    {session}
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -511,15 +525,25 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
                       name={`academicHistory.${index}.class`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700">Class</FormLabel>
-                          <FormControl>
-                            <Input
-                              disabled={loading}
-                              placeholder="Class 10"
-                              className="focus:ring-2 focus:ring-blue-500"
-                              {...field}
-                            />
-                          </FormControl>
+                          <FormLabel className="text-gray-700">Class *</FormLabel>
+                          <Select
+                            disabled={loading}
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="focus:ring-2 focus:ring-blue-500">
+                                <SelectValue placeholder="Select class" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Class 6">Class 6</SelectItem>
+                              <SelectItem value="Class 7">Class 7</SelectItem>
+                              <SelectItem value="Class 8">Class 8</SelectItem>
+                              <SelectItem value="Class 9">Class 9</SelectItem>
+                              <SelectItem value="Class 10">Class 10</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -585,8 +609,8 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
                 disabled={loading || uploading}
                 className="bg-blue-600 hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               >
-                {loading 
-                  ? (mode === "edit" ? "Updating..." : "Adding...") 
+                {loading
+                  ? (mode === "edit" ? "Updating..." : "Adding...")
                   : (mode === "edit" ? "Update Student" : "Add Student")}
               </Button>
             </div>
