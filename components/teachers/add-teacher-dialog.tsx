@@ -37,8 +37,8 @@ import { Progress } from "../ui/progress";
 import { useTeachersData } from "@/app/data/DataFetch";
 
 interface TeacherFormValues {
-  teacherId: string;
   name: string;
+  position: string;
   gender: "Male" | "Female" | "Other";
   dateOfBirth: Date;
   photo?: string;
@@ -63,8 +63,8 @@ export function AddTeacherModal({ teacher, mode = "add" }: AddTeacherModalProps)
 
   const form = useForm<TeacherFormValues>({
     defaultValues: {
-      teacherId: "",
       name: "",
+      position: "",
       gender: "Male",
       dateOfBirth: new Date(),
       photo: "",
@@ -78,8 +78,8 @@ export function AddTeacherModal({ teacher, mode = "add" }: AddTeacherModalProps)
   useEffect(() => {
     if (teacher && mode === "edit") {
       form.reset({
-        teacherId: teacher.teacherId,
         name: teacher.name,
+        position: teacher.position,
         gender: teacher.gender,
         dateOfBirth: new Date(teacher.dateOfBirth),
         photo: teacher.photo,
@@ -93,8 +93,8 @@ export function AddTeacherModal({ teacher, mode = "add" }: AddTeacherModalProps)
       }
     } else {
       form.reset({
-        teacherId: "",
         name: "",
+        position: "",
         gender: "Male",
         dateOfBirth: new Date(),
         photo: "",
@@ -208,14 +208,14 @@ export function AddTeacherModal({ teacher, mode = "add" }: AddTeacherModalProps)
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="teacherId"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-700">Teacher ID</FormLabel>
+                    <FormLabel className="text-gray-700">Full Name</FormLabel>
                     <FormControl>
                       <Input
-                        disabled={loading || mode === "edit"}
-                        placeholder="T-001"
+                        disabled={loading}
+                        placeholder="John Doe"
                         required
                         className="focus:ring-2 focus:ring-blue-500"
                         {...field}
@@ -225,16 +225,17 @@ export function AddTeacherModal({ teacher, mode = "add" }: AddTeacherModalProps)
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
-                name="name"
+                name="position"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-700">Full Name</FormLabel>
+                    <FormLabel className="text-gray-700">Position</FormLabel>
                     <FormControl>
                       <Input
                         disabled={loading}
-                        placeholder="John Doe"
+                        placeholder="Teacher"
                         required
                         className="focus:ring-2 focus:ring-blue-500"
                         {...field}
