@@ -106,7 +106,7 @@ export function StudentsTable() {
       // Search filter (name, studentId, phone, guardian name)
       if (filters.search) {
         const searchTerm = filters.search.toLowerCase();
-        const matchesSearch = 
+        const matchesSearch =
           student.name.toLowerCase().includes(searchTerm) ||
           student.studentId.toLowerCase().includes(searchTerm) ||
           student.phone.toLowerCase().includes(searchTerm) ||
@@ -201,11 +201,11 @@ export function StudentsTable() {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    
+
     return age;
   };
 
@@ -238,11 +238,11 @@ export function StudentsTable() {
     });
   };
 
-  const hasActiveFilters = filters.search || 
-    filters.class !== "all" || 
+  const hasActiveFilters = filters.search ||
+    filters.class !== "all" ||
     filters.session !== "all" ||
-    filters.status !== "all" || 
-    filters.result !== "all" || 
+    filters.status !== "all" ||
+    filters.result !== "all" ||
     filters.gender !== "all";
 
   if (isLoading) {
@@ -318,6 +318,13 @@ export function StudentsTable() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="font-geist">Student Records</CardTitle>
           <div className="flex items-center gap-2">
+            {editingStudent && (
+              <AddStudentModal
+                student={editingStudent}
+                mode="edit"
+                onClose={() => setEditingStudent(null)}
+              />
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -345,13 +352,13 @@ export function StudentsTable() {
             )}
           </div>
         </CardHeader>
-        
+
         {/* Filter Section */}
         {showFilters && (
           <CardContent className="border-b pb-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
               {/* Search Input */}
-              <div className="relative">
+              {/* <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search students..."
@@ -359,7 +366,7 @@ export function StudentsTable() {
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                   className="pl-9"
                 />
-              </div>
+              </div> */}
 
               {/* Session Filter */}
               <Select
@@ -544,7 +551,7 @@ export function StudentsTable() {
                             <Eye className="mr-2 h-4 w-4" />
                             View Profile
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="font-manrope"
                             onClick={() => handleEdit(student)}
                           >
@@ -552,7 +559,7 @@ export function StudentsTable() {
                             Edit Student
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="font-manrope text-destructive"
                             onClick={() => handleDelete(student._id)}
                           >
@@ -594,14 +601,6 @@ export function StudentsTable() {
           </div>
         </CardContent>
       </Card>
-
-      {editingStudent && (
-        <AddStudentModal
-          student={editingStudent}
-          mode="edit"
-          onClose={() => setEditingStudent(null)}
-        />
-      )}
     </>
   )
 }

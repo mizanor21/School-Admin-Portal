@@ -36,8 +36,8 @@ import { Progress } from "../ui/progress";
 import { useStudentsData } from "@/app/data/DataFetch";
 
 interface Guardian {
-  name: string;
-  phone: string;
+  fName: string;
+  mName: string;
 }
 
 interface AcademicHistory {
@@ -48,12 +48,14 @@ interface AcademicHistory {
 }
 
 interface StudentFormValues {
-  studentId: string;
   name: string;
+  name_bn: string;
   phone: string;
   photo: string;
+  birthCertificate?: string;
   gender: "Male" | "Female" | "Other";
   dateOfBirth: Date;
+  status: "active" | "inactive" | "new-admission";
   guardian: Guardian;
   academicHistory: AcademicHistory[];
 }
@@ -73,15 +75,17 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
 
   const form = useForm<StudentFormValues>({
     defaultValues: {
-      studentId: "",
       name: "",
+      name_bn: "",
       phone: "",
       photo: "",
       gender: "Male",
       dateOfBirth: new Date(),
+      birthCertificate: "",
+      status: "active",
       guardian: {
-        name: "",
-        phone: ""
+        fName: "",
+        mName: ""
       },
       academicHistory: []
     },
@@ -95,13 +99,15 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
   useEffect(() => {
     if (student && mode === "edit") {
       form.reset({
-        studentId: student.studentId,
         name: student.name,
+        name_bn: student.name_bn || "",
         phone: student.phone,
         photo: student.photo,
         gender: student.gender,
+        birthCertificate: student.birthCertificate || "",
         dateOfBirth: new Date(student.dateOfBirth),
-        guardian: student.guardian || { name: "", phone: "" },
+        status: student.status || "active",
+        guardian: student.guardian || { fName: "", mName: "" },
         academicHistory: student.academicHistory || []
       });
       if (student.photo) {
@@ -109,15 +115,17 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
       }
     } else {
       form.reset({
-        studentId: "",
         name: "",
+        name_bn: "",
         phone: "",
         photo: "",
         gender: "Male",
+        birthCertificate: "",
         dateOfBirth: new Date(),
+        status: "active",
         guardian: {
-          name: "",
-          phone: ""
+          fName: "",
+          mName: ""
         },
         academicHistory: []
       });
@@ -247,29 +255,10 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="studentId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-gray-700">Student ID *</FormLabel>
-                    <FormControl>
-                      <Input
-                        disabled={loading || mode === "edit"}
-                        placeholder="STU-001"
-                        required
-                        className="focus:ring-2 focus:ring-blue-500"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-700">Full Name *</FormLabel>
+                    <FormLabel className="text-gray-700">Name (English)*</FormLabel>
                     <FormControl>
                       <Input
                         disabled={loading}
@@ -283,6 +272,27 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="name_bn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Name (Bangla)*</FormLabel>
+                    <FormControl>
+                      <Input
+                        disabled={loading}
+                        placeholder="John Doe"
+                        required
+                        className="focus:ring-2 focus:ring-blue-500"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="gender"
@@ -316,10 +326,32 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
                   <FormItem>
                     <FormLabel className="text-gray-700">Date of Birth *</FormLabel>
                     <FormControl>
-                      <DatePicker
+                      <Input
+                      type="date"
+                      disabled={loading}
+                      {...field}
+                      value={field.value.toISOString().split('T')[0]}
+                      onChange={(e) => field.onChange(new Date(e.target.value))}
+                      className="focus:ring-2 focus:ring-blue-500"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="birthCertificate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Birth Certificate *</FormLabel>
+                    <FormControl>
+                      <Input
                         disabled={loading}
-                        date={field.value}
-                        setDate={field.onChange}
+                        placeholder="Birth Certificate Number"
+                        required
+                        className="focus:ring-2 focus:ring-blue-500"
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -346,6 +378,34 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Status *</FormLabel>
+                    <Select
+                      disabled={loading}
+                      onValueChange={field.onChange}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="focus:ring-2 focus:ring-blue-500">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="new-admission">New Admission</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
             </div>
 
             {/* Photo Upload */}
@@ -416,14 +476,14 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="guardian.name"
+                  name="guardian.fName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-700">Guardian Name *</FormLabel>
+                      <FormLabel className="text-gray-700">Fathers Name *</FormLabel>
                       <FormControl>
                         <Input
                           disabled={loading}
-                          placeholder="Guardian's full name"
+                          placeholder="Father's full name"
                           required
                           className="focus:ring-2 focus:ring-blue-500"
                           {...field}
@@ -435,10 +495,10 @@ export function AddStudentModal({ student, mode = "add" }: AddStudentModalProps)
                 />
                 <FormField
                   control={form.control}
-                  name="guardian.phone"
+                  name="guardian.mName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-700">Guardian Phone *</FormLabel>
+                      <FormLabel className="text-gray-700">Mother's Name *</FormLabel>
                       <FormControl>
                         <Input
                           disabled={loading}
